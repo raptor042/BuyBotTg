@@ -14,8 +14,7 @@ from telegram.ext import (
 )
 
 from __db__.db import connect_db, get_chat, set_chat, update_chat
-from __api__.api import getToken
-from __web3__.web3 import validateAddress, getBuys
+from __web3__.web3 import validateAddress
 
 import logging
 
