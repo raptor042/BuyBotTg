@@ -1,8 +1,5 @@
 import os
 from dotenv import load_dotenv
-import schedule
-import time
-from datetime import datetime
 
 from web3 import Web3
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
