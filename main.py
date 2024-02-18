@@ -53,7 +53,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 return ConversationHandler.END
 
             chat_id = update.message.chat_id
-            context.user_data["chat_id"] = chat_id
 
             query = {"chat_id": chat_id}
             existing_token = get_chat(db=db, query=query)
@@ -68,7 +67,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 [InlineKeyboardButton("Click to get started 🚀", callback_data="start")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            reply_msg = f"<b>Hello ${user.username} 👋, Welcome to the ChainD BuyBot 🤖.</b>\n\n<i>It provides blockchain powered trending insights on any token of your choice 🚀.</i>\n\n<b>To get started:</b>\n\n<i>✅ Start by sending your the token address ie: 0x23exb......</i>\n<i>✅ You must have Non-Anonymous Admin Rights in your token's group chat.</i>"
+            reply_msg = f"<b>Hello ${user.username} 👋, Welcome to the 0xBuyBot 🤖.</b>\n\n<i>It provides blockchain powered trending insights on any token of your choice on BSC & ETH 🚀.</i>\n\n<b>To get started:</b>\n\n<i>✅ Start by sending your the token address ie: 0x23exb......</i>\n<i>✅ You must have Non-Anonymous Admin Rights in your token's group chat.</i>"
 
             await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
 
@@ -91,6 +90,30 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await query.answer()
 
     try:
+        keyboard = [
+            [InlineKeyboardButton("Binance Smart Chain", callback_data="bsc-chain")],
+            [InlineKeyboardButton("Ethereum", callback_data="eth-chain")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_msg = "<b>🔰 Please select the blockchain of choice.....</b>"
+        await query.message.reply_html(text=reply_msg, reply_markup=reply_markup)
+
+        return START
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
+
+        return ConversationHandler.END
+    
+async def chain(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        context.user_data["chain"] = query.data
+
         reply_msg = "<b>🔰 Enter your token address ie: 0x1234....</b>"
         await query.message.reply_html(text=reply_msg)
 
@@ -112,18 +135,10 @@ async def token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         print(is_valid)
 
         if is_valid:
-            chat_id = context.user_data["chat_id"]
-            value = {"chat_id": chat_id, "token": update.message.text, "buys": []}
-            chat = set_chat(db=db, value=value)
-            print(chat)
+            context.user_data["token"] = update.message.text
 
-            keyboard = [
-                [InlineKeyboardButton("End Conversation", callback_data="end")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added the ChainD BuyBot to your token group chat. Get ready for super-powered trending insights 🚀.</b>"
-
-            await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
+            reply_msg = "<b>🔰 Enter your token group chat emoji....</b>"
+            await update.message.reply_html(text=reply_msg)
 
             return START
         else:
@@ -131,6 +146,37 @@ async def token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             await update.message.reply_html(text=reply_msg)
 
             return ConversationHandler.END
+
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+
+        return ConversationHandler.END
+    
+async def set_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s sent an emoji.", user.username)
+
+    try:
+        chat_id = update.message.chat_id
+        chain = context.user_data["chain"]
+        token = context.user_data["token"]
+
+        value = {"chat_id": chat_id, "chain": chain, "token": token, "emoji": update.message.text, "buys": []}
+        chat = set_chat(db=db, value=value)
+        print(chat)
+
+        keyboard = [
+            [InlineKeyboardButton("End Conversation", callback_data="end")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added the 0xBuyBot to your token group chat. Get ready for super-powered trending insights 🚀.</b>"
+
+        await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
+
+        return START
 
     except Exception as e:
         logging.error(f"An error has occurred: {e}")
@@ -148,6 +194,41 @@ async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return ConversationHandler.END
 
+async def emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.message.from_user
+    logger.info("User %s has entered the /emoji command.", user.username)
+
+    try:
+        reply_msg = "<b>🔰 Enter a new token group chat emoji....</b>"
+        await update.message.reply_html(text=reply_msg)
+
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+
+async def change_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s sent an emoji.", user.username)
+
+    try:
+        chat_id = update.message.chat_id
+
+        query = {"chat_id": chat_id}
+        value = {"emoji": update.message.text}
+        chat = update_chat(db=db, query=query, value=value)
+        print(chat)
+
+        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully changed the emoji of your token group chat.</b>"
+
+        await update.message.reply_html(text=reply_msg)
+
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
 
 def main() -> None:
     global db
@@ -156,8 +237,6 @@ def main() -> None:
     global web3
     web3 = Web3(Web3.HTTPProvider(endpoint_uri=MAINNET_API_URL))
 
-    # schedule.every(10).seconds.do(getBuys(web3=web3, db=db))
-
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
     conv_handler = ConversationHandler(
@@ -165,13 +244,19 @@ def main() -> None:
         states={
             START: [
                 CallbackQueryHandler(_start, pattern="^start$"),
-                MessageHandler(filters.Regex("^0x"), token)
+                CallbackQueryHandler(chain, pattern="chain$"),
+                MessageHandler(filters.Regex("^0x"), token),
+                MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji)
             ]
         },
         fallbacks=[CallbackQueryHandler(end, pattern="^end$")]
     )
+    emoji_handler = CommandHandler("emoji", emoji)
+    change_emoji_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), change_emoji)
 
     app.add_handler(conv_handler)
+    app.add_handler(emoji_handler)
+    app.add_handler(change_emoji_handler)
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
