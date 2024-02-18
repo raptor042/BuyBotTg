@@ -33,7 +33,7 @@ db = None
 
 web3 = None
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     logger.info("User %s started the conversation.", user.username)
 
@@ -85,14 +85,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
         return ConversationHandler.END
 
-async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
 
     try:
         keyboard = [
-            [InlineKeyboardButton("Binance Smart Chain", callback_data="bsc-chain")],
-            [InlineKeyboardButton("Ethereum", callback_data="eth-chain")]
+            [InlineKeyboardButton("Binance Smart Chain", callback_data="bsc")],
+            [InlineKeyboardButton("Ethereum", callback_data="eth")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         reply_msg = "<b>🔰 Please select the blockchain of choice.....</b>"
@@ -240,11 +240,11 @@ def main() -> None:
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        entry_points=[CommandHandler("add", add)],
         states={
             START: [
-                CallbackQueryHandler(_start, pattern="^start$"),
-                CallbackQueryHandler(chain, pattern="chain$"),
+                CallbackQueryHandler(start, pattern="^start$"),
+                CallbackQueryHandler(chain, pattern="^(bsc|eth)$"),
                 MessageHandler(filters.Regex("^0x"), token),
                 MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji)
             ]
