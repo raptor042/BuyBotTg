@@ -268,8 +268,8 @@ async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await file.download_to_drive("photo")
         print(file)
 
-        with open(file, "rb") as f:
-            encoded = Binary(f.read())
+        # with open(file, "rb") as f:
+        #     encoded = Binary(f.read())
 
         # query = {"chat_id": chat_id}
         # value = {"photo": encoded}
@@ -297,8 +297,8 @@ async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await file.download_to_drive("gif")
         print(file)
 
-        with open(file, "rb") as f:
-            encoded = Binary(f.read())
+        # with open(file, "rb") as f:
+        #     encoded = Binary(f.read())
 
         # query = {"chat_id": chat_id}
         # value = {"gif": encoded}
