@@ -7,5 +7,7 @@ def getTokenVolume(token):
     except Exception as e:
         logging.error(f"An error occured while fetching token data, {e}")
     else:
-        print(response.json())
-        return response["pairs"][0]["volume"]["h24"]
+        data = response.json()
+        print(data)
+
+        return data["pairs"][0]["volume"]["h24"]
