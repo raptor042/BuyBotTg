@@ -320,8 +320,8 @@ def main() -> None:
     )
     settings_handler = CommandHandler("settings", settings)
     identity_handler = CallbackQueryHandler(identity, pattern="^identity$")
-    emoji_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji),
-    photo_handler = MessageHandler(filters.PHOTO, set_photo),
+    emoji_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji)
+    photo_handler = MessageHandler(filters.PHOTO, set_photo)
     gif_handler = MessageHandler(filters.VIDEO, set_gif)
 
     app.add_handler(add_conv_handler)
