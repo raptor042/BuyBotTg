@@ -141,7 +141,7 @@ async def token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
             keyboard = [
                 [InlineKeyboardButton("Emoji", callback_data="emoji")],
-                [InlineKeyboardButton("Photo", callback_data="photo")]
+                [InlineKeyboardButton("Photo", callback_data="photo")],
                 [InlineKeyboardButton("GIF", callback_data="gif")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
