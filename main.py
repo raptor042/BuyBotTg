@@ -12,7 +12,7 @@ from telegram.ext import (
     ConversationHandler,
     filters
 )
-from bson.binary import Binary
+import base64
 
 from __db__.db import connect_db, get_chat, set_chat, update_chat
 from __web3__.web3 import validateAddress
@@ -269,7 +269,7 @@ async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(file)
 
         with open("photo.jpg", "rb") as f:
-            encoded = Binary(f.read())
+            encoded = base64.b64encode(f.read())
 
         query = {"chat_id": chat_id}
         value = {"$set": {"photo": encoded}}
@@ -301,7 +301,7 @@ async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(file)
 
         with open("gif.mp4", "rb") as f:
-            encoded = Binary(f.read())
+            encoded = base64.b64encode(f.read())
 
         query = {"chat_id": chat_id}
         value = {"$set": {"gif": encoded}}
