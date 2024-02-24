@@ -196,7 +196,7 @@ async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await update.message.reply_html(text=reply_msg)
 
-async def identity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def identity(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -210,8 +210,25 @@ async def identity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         reply_msg = "<b>🔰 Add a group Emoji/Photo/GIF....</b>"
 
         await query.message.reply_html(text=reply_msg, reply_markup=reply_markup)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
 
-        return START
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
+
+async def _identity(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        if query.data == "emoji":
+            reply_msg = "<b>🔰 Send an emoji....</b>"
+        elif query.data == "photo":
+            reply_msg = "<b>🔰 Send a photo....</b>"
+        elif query.data == "gif":
+            reply_msg = "<b>🔰 Send a GIF....</b>"
+
+        await query.message.reply_html(text=reply_msg)
     except Exception as e:
         logging.error(f"An error has occurred: {e}")
 
@@ -240,7 +257,7 @@ async def set_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await update.message.reply_html(text=reply_msg)
 
-async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     logger.info("User %s sent an photo.", user.username)
 
@@ -269,7 +286,7 @@ async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await update.message.reply_html(text=reply_msg)
     
-async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     logger.info("User %s sent an GIF.", user.username)
 
@@ -320,6 +337,7 @@ def main() -> None:
     )
     settings_handler = CommandHandler("settings", settings)
     identity_handler = CallbackQueryHandler(identity, pattern="^identity$")
+    identity__handler = CallbackQueryHandler(_identity, pattern="^(emoji|photo|gif)$")
     emoji_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji)
     photo_handler = MessageHandler(filters.PHOTO, set_photo)
     gif_handler = MessageHandler(filters.VIDEO, set_gif)
@@ -327,6 +345,7 @@ def main() -> None:
     app.add_handler(add_conv_handler)
     app.add_handler(settings_handler)
     app.add_handler(identity_handler)
+    app.add_handler(identity__handler)
     app.add_handler(emoji_handler)
     app.add_handler(photo_handler)
     app.add_handler(gif_handler)
