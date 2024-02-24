@@ -69,7 +69,7 @@ async def add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 [InlineKeyboardButton("Click to get started 🚀", callback_data="start")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            reply_msg = f"<b>Hello ${user.username} 👋, Welcome to the 0xBuyBot 🤖.</b>\n\n<i>It provides blockchain powered trending insights on any token of your choice on BSC & ETH 🚀.</i>\n\n<b>To get started:</b>\n\n<i>✅ Start by sending your the token address ie: 0x23exb......</i>\n<i>✅ You must have Non-Anonymous Admin Rights in your token's group chat.</i>"
+            reply_msg = f"<b>Hello ${user.username} 👋, Welcome to the 0xBuyBot 🤖.</b>\n\n<i>It provides blockchain powered trending insights on any token of your choice on BSC & ETH 🚀.</i>\n\n<b>To get started:</b>\n\n<i>✅ Start by sending your the token address ie: 0x23exb......</i>\n<i>✅ You must have Non-Anonymous Admin Rights in your token's group chat.</i>\n<i>✅ Use the settings command to add an identity (emoji, photo or GIF) to your token group chat.</i>"
 
             await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
 
@@ -137,15 +137,21 @@ async def token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         print(is_valid)
 
         if is_valid:
-            context.user_data["token"] = update.message.text
+            chat_id = update.message.chat_id
+            chain = context.user_data["chain"]
+
+            volume = getTokenVolume(token=update.message.text)
+            print(volume)
+
+            value = {"chat_id": chat_id, "chain": chain, "token": update.message.text, "volume": volume, "buys": []}
+            chat = set_chat(db=db, value=value)
+            print(chat)
 
             keyboard = [
-                [InlineKeyboardButton("Emoji", callback_data="emoji")],
-                [InlineKeyboardButton("Photo", callback_data="photo")],
-                [InlineKeyboardButton("GIF", callback_data="gif")]
+                [InlineKeyboardButton("End Conversation", callback_data="end")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            reply_msg = "<b>🔰 Select your token group chat identity....</b>"
+            reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added the 0xBuyBot to your token group chat. Get ready for super-powered trending insights 🚀.</b>"
 
             await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
 
@@ -163,123 +169,7 @@ async def token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_html(text=reply_msg)
 
         return ConversationHandler.END
-    
-async def set_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user = update.message.from_user
-    logger.info("User %s sent an emoji.", user.username)
-
-    try:
-        chat_id = update.message.chat_id
-        chain = context.user_data["chain"]
-        token = context.user_data["token"]
-
-        volume = getTokenVolume(token=token)
-        print(volume)
-
-        value = {"chat_id": chat_id, "chain": chain, "token": token, "emoji": update.message.text, "volume": volume, "buys": []}
-        chat = set_chat(db=db, value=value)
-        print(chat)
-
-        keyboard = [
-            [InlineKeyboardButton("End Conversation", callback_data="end")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added the 0xBuyBot to your token group chat. Get ready for super-powered trending insights 🚀.</b>"
-
-        await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
-
-        return START
-
-    except Exception as e:
-        logging.error(f"An error has occurred: {e}")
-
-        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
-        await update.message.reply_html(text=reply_msg)
-
-        return ConversationHandler.END
-
-async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user = update.message.from_user
-    logger.info("User %s sent an photo.", user.username)
-
-    try:
-        chat_id = update.message.chat_id
-        chain = context.user_data["chain"]
-        token = context.user_data["token"]
-
-        volume = getTokenVolume(token=token)
-        print(volume)
-
-        file = await update.message.effective_attachment[-1].get_file()
-        await file.download_to_drive("photo")
-        print(file)
-
-        with open(file, "rb") as f:
-            encoded = Binary(f.read())
-
-        # value = {"chat_id": chat_id, "chain": chain, "token": token, "photo": encoded, "volume": volume, "buys": []}
-        # chat = set_chat(db=db, value=value)
-        # print(chat)
-
-        keyboard = [
-            [InlineKeyboardButton("End Conversation", callback_data="end")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added the 0xBuyBot to your token group chat. Get ready for super-powered trending insights 🚀.</b>"
-
-        await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
-
-        return START
-
-    except Exception as e:
-        logging.error(f"An error has occurred: {e}")
-
-        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
-        await update.message.reply_html(text=reply_msg)
-
-        return ConversationHandler.END
-    
-async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user = update.message.from_user
-    logger.info("User %s sent an GIF.", user.username)
-
-    try:
-        chat_id = update.message.chat_id
-        chain = context.user_data["chain"]
-        token = context.user_data["token"]
-
-        volume = getTokenVolume(token=token)
-        print(volume)
-
-        file = await update.message.effective_attachment.get_file()
-        await file.download_to_drive("gif")
-        print(file)
-
-        with open(file, "rb") as f:
-            encoded = Binary(f.read())
-
-        # value = {"chat_id": chat_id, "chain": chain, "token": token, "gif": encoded, "volume": volume, "buys": []}
-        # chat = set_chat(db=db, value=value)
-        # print(chat)
-
-        keyboard = [
-            [InlineKeyboardButton("End Conversation", callback_data="end")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added the 0xBuyBot to your token group chat. Get ready for super-powered trending insights 🚀.</b>"
-
-        await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
-
-        return START
-
-    except Exception as e:
-        logging.error(f"An error has occurred: {e}")
-
-        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
-        await update.message.reply_html(text=reply_msg)
-
-        return ConversationHandler.END
-    
+        
 async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -288,13 +178,17 @@ async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return ConversationHandler.END
 
-async def identity(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
-    logger.info("User %s has entered the /identity command.", user.username)
+    logger.info("User %s has entered the /settings command.", user.username)
 
     try:
-        reply_msg = "<b>🔰 Enter a new token group chat identity....</b>"
-        await update.message.reply_html(text=reply_msg)
+        keyboard = [
+            [InlineKeyboardButton("Add a group Emoji/Photo/GIF", callback_data="identity")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_msg = "<b>🔰 Add an emoji, photo or GIF to identify your token group chat.</b>"
+        await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
 
     except Exception as e:
         logging.error(f"An error has occurred: {e}")
@@ -302,18 +196,41 @@ async def identity(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await update.message.reply_html(text=reply_msg)
 
-async def change_identity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def identity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        keyboard = [
+            [InlineKeyboardButton("Emoji", callback_data="emoji")],
+            [InlineKeyboardButton("Photo", callback_data="photo")],
+            [InlineKeyboardButton("GIF", callback_data="gif")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_msg = "<b>🔰 Add a group Emoji/Photo/GIF....</b>"
+
+        await query.message.reply_html(text=reply_msg, reply_markup=reply_markup)
+
+        return START
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
+    
+async def set_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
-    logger.info("User %s sent an emoji|picture|GIF.", user.username)
+    logger.info("User %s sent an emoji.", user.username)
 
     try:
         chat_id = update.message.chat_id
+
         query = {"chat_id": chat_id}
-        value = {"identity": update.message.text}
+        value = {"emoji": update.message.text}
         chat = update_chat(db=db, query=query, value=value)
         print(chat)
 
-        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully changed the emoji of your token group chat.</b>"
+        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added an emoji to identify your token group chat. Get ready for super-powered trending insights 🚀.</b>"
 
         await update.message.reply_html(text=reply_msg)
 
@@ -323,6 +240,64 @@ async def change_identity(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await update.message.reply_html(text=reply_msg)
 
+async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s sent an photo.", user.username)
+
+    try:
+        chat_id = update.message.chat_id
+
+        file = await update.message.effective_attachment[-1].get_file()
+        await file.download_to_drive("photo")
+        print(file)
+
+        with open(file, "rb") as f:
+            encoded = Binary(f.read())
+
+        # query = {"chat_id": chat_id}
+        # value = {"photo": encoded}
+        # chat = update_chat(db=db, query=query, value=value)
+        # print(chat)
+
+        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added a photo to identify your token group chat. Get ready for super-powered trending insights 🚀.</b>"
+
+        await update.message.reply_html(text=reply_msg)
+
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+    
+async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s sent an GIF.", user.username)
+
+    try:
+        chat_id = update.message.chat_id
+
+        file = await update.message.effective_attachment.get_file()
+        await file.download_to_drive("gif")
+        print(file)
+
+        with open(file, "rb") as f:
+            encoded = Binary(f.read())
+
+        # query = {"chat_id": chat_id}
+        # value = {"gif": encoded}
+        # chat = update_chat(db=db, query=query, value=value)
+        # print(chat)
+
+        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added a GIF to identify your token group chat. Get ready for super-powered trending insights 🚀.</b>"
+
+        await update.message.reply_html(text=reply_msg)
+
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+    
 def main() -> None:
     global db
     db = connect_db(uri=MONGO_URI)
@@ -338,20 +313,23 @@ def main() -> None:
             START: [
                 CallbackQueryHandler(start, pattern="^start$"),
                 CallbackQueryHandler(chain, pattern="^(bsc|eth)$"),
-                MessageHandler(filters.Regex("^0x"), token),
-                MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji),
-                MessageHandler(filters.PHOTO, set_photo),
-                MessageHandler(filters.VIDEO, set_gif)
+                MessageHandler(filters.Regex("^0x"), token)
             ]
         },
         fallbacks=[CallbackQueryHandler(end, pattern="^end$")]
     )
-    identity_handler = CommandHandler("identity", identity)
-    change_identity_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), change_identity)
+    settings_handler = CommandHandler("settings", settings)
+    identity_handler = CallbackQueryHandler(identity, pattern="^identity$")
+    emoji_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji),
+    photo_handler = MessageHandler(filters.PHOTO, set_photo),
+    gif_handler = MessageHandler(filters.VIDEO, set_gif)
 
     app.add_handler(add_conv_handler)
+    app.add_handler(settings_handler)
     app.add_handler(identity_handler)
-    app.add_handler(change_identity_handler)
+    app.add_handler(emoji_handler)
+    app.add_handler(photo_handler)
+    app.add_handler(gif_handler)
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
