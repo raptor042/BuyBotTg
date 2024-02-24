@@ -12,9 +12,11 @@ from telegram.ext import (
     ConversationHandler,
     filters
 )
+from bson.binary import Binary
 
 from __db__.db import connect_db, get_chat, set_chat, update_chat
 from __web3__.web3 import validateAddress
+from __api__.api import getTokenVolume
 
 import logging
 
@@ -47,7 +49,7 @@ async def add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             print(f"CHAT MEMBER: {user_status}")
 
             if user_status not in ["administrator", "creator"]:
-                reply_msg = "<b>🚨 You do not have Non-Anonymous Admin Rights to use.</b>"
+                reply_msg = "<b>🚨 You do not have Non-Anonymous Admin Rights to the token group chat.</b>"
                 await update.message.reply_html(text=reply_msg)
 
                 return ConversationHandler.END
@@ -137,8 +139,15 @@ async def token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         if is_valid:
             context.user_data["token"] = update.message.text
 
-            reply_msg = "<b>🔰 Enter your token group chat emoji....</b>"
-            await update.message.reply_html(text=reply_msg)
+            keyboard = [
+                [InlineKeyboardButton("Emoji", callback_data="emoji")],
+                [InlineKeyboardButton("Photo", callback_data="photo")]
+                [InlineKeyboardButton("GIF", callback_data="gif")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            reply_msg = "<b>🔰 Select your token group chat identity....</b>"
+
+            await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
 
             return START
         else:
@@ -164,9 +173,94 @@ async def set_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         chain = context.user_data["chain"]
         token = context.user_data["token"]
 
-        value = {"chat_id": chat_id, "chain": chain, "token": token, "emoji": update.message.text, "buys": []}
+        volume = getTokenVolume(token=token)
+        print(volume)
+
+        value = {"chat_id": chat_id, "chain": chain, "token": token, "emoji": update.message.text, "volume": volume, "buys": []}
         chat = set_chat(db=db, value=value)
         print(chat)
+
+        keyboard = [
+            [InlineKeyboardButton("End Conversation", callback_data="end")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added the 0xBuyBot to your token group chat. Get ready for super-powered trending insights 🚀.</b>"
+
+        await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
+
+        return START
+
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+
+        return ConversationHandler.END
+
+async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s sent an photo.", user.username)
+
+    try:
+        chat_id = update.message.chat_id
+        chain = context.user_data["chain"]
+        token = context.user_data["token"]
+
+        volume = getTokenVolume(token=token)
+        print(volume)
+
+        file = await update.message.effective_attachment[-1].get_file()
+        await file.download_to_drive("photo")
+        print(file)
+
+        with open(file, "rb") as f:
+            encoded = Binary(f.read())
+
+        # value = {"chat_id": chat_id, "chain": chain, "token": token, "photo": encoded, "volume": volume, "buys": []}
+        # chat = set_chat(db=db, value=value)
+        # print(chat)
+
+        keyboard = [
+            [InlineKeyboardButton("End Conversation", callback_data="end")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added the 0xBuyBot to your token group chat. Get ready for super-powered trending insights 🚀.</b>"
+
+        await update.message.reply_html(text=reply_msg, reply_markup=reply_markup)
+
+        return START
+
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+
+        return ConversationHandler.END
+    
+async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s sent an GIF.", user.username)
+
+    try:
+        chat_id = update.message.chat_id
+        chain = context.user_data["chain"]
+        token = context.user_data["token"]
+
+        volume = getTokenVolume(token=token)
+        print(volume)
+
+        file = await update.message.effective_attachment.get_file()
+        await file.download_to_drive("gif")
+        print(file)
+
+        with open(file, "rb") as f:
+            encoded = Binary(f.read())
+
+        # value = {"chat_id": chat_id, "chain": chain, "token": token, "gif": encoded, "volume": volume, "buys": []}
+        # chat = set_chat(db=db, value=value)
+        # print(chat)
 
         keyboard = [
             [InlineKeyboardButton("End Conversation", callback_data="end")]
@@ -194,12 +288,12 @@ async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return ConversationHandler.END
 
-async def emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def identity(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
-    logger.info("User %s has entered the /emoji command.", user.username)
+    logger.info("User %s has entered the /identity command.", user.username)
 
     try:
-        reply_msg = "<b>🔰 Enter a new token group chat emoji....</b>"
+        reply_msg = "<b>🔰 Enter a new token group chat identity....</b>"
         await update.message.reply_html(text=reply_msg)
 
     except Exception as e:
@@ -208,15 +302,14 @@ async def emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await update.message.reply_html(text=reply_msg)
 
-async def change_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def change_identity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
-    logger.info("User %s sent an emoji.", user.username)
+    logger.info("User %s sent an emoji|picture|GIF.", user.username)
 
     try:
         chat_id = update.message.chat_id
-
         query = {"chat_id": chat_id}
-        value = {"emoji": update.message.text}
+        value = {"identity": update.message.text}
         chat = update_chat(db=db, query=query, value=value)
         print(chat)
 
@@ -239,24 +332,26 @@ def main() -> None:
 
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
-    conv_handler = ConversationHandler(
+    add_conv_handler = ConversationHandler(
         entry_points=[CommandHandler("add", add)],
         states={
             START: [
                 CallbackQueryHandler(start, pattern="^start$"),
                 CallbackQueryHandler(chain, pattern="^(bsc|eth)$"),
                 MessageHandler(filters.Regex("^0x"), token),
-                MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji)
+                MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji),
+                MessageHandler(filters.PHOTO, set_photo),
+                MessageHandler(filters.VIDEO, set_gif)
             ]
         },
         fallbacks=[CallbackQueryHandler(end, pattern="^end$")]
     )
-    emoji_handler = CommandHandler("emoji", emoji)
-    change_emoji_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), change_emoji)
+    identity_handler = CommandHandler("identity", identity)
+    change_identity_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), change_identity)
 
-    app.add_handler(conv_handler)
-    app.add_handler(emoji_handler)
-    app.add_handler(change_emoji_handler)
+    app.add_handler(add_conv_handler)
+    app.add_handler(identity_handler)
+    app.add_handler(change_identity_handler)
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
