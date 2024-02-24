@@ -243,7 +243,7 @@ async def set_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.message.chat_id
 
         query = {"chat_id": chat_id}
-        value = {"emoji": update.message.text}
+        value = {"$set": {"emoji": update.message.text}}
         chat = update_chat(db=db, query=query, value=value)
         print(chat)
 
@@ -265,16 +265,19 @@ async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.message.chat_id
 
         file = await update.message.effective_attachment[-1].get_file()
-        await file.download_to_drive("photo")
+        await file.download_to_drive("photo.jpg")
         print(file)
 
-        # with open(file, "rb") as f:
-        #     encoded = Binary(f.read())
+        with open("photo.jpg", "rb") as f:
+            encoded = Binary(f.read())
 
-        # query = {"chat_id": chat_id}
-        # value = {"photo": encoded}
-        # chat = update_chat(db=db, query=query, value=value)
-        # print(chat)
+        query = {"chat_id": chat_id}
+        value = {"$set": {"photo": encoded}}
+        chat = update_chat(db=db, query=query, value=value)
+        print(chat)
+
+        if os.path.exists(path="photo.jpg"):
+            os.remove(path="photo.jpg")
 
         reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added a photo to identify your token group chat. Get ready for super-powered trending insights 🚀.</b>"
 
@@ -294,16 +297,19 @@ async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.message.chat_id
 
         file = await update.message.effective_attachment.get_file()
-        await file.download_to_drive("gif")
+        await file.download_to_drive("gif.mp4")
         print(file)
 
-        # with open(file, "rb") as f:
-        #     encoded = Binary(f.read())
+        with open("gif.mp4", "rb") as f:
+            encoded = Binary(f.read())
 
-        # query = {"chat_id": chat_id}
-        # value = {"gif": encoded}
-        # chat = update_chat(db=db, query=query, value=value)
-        # print(chat)
+        query = {"chat_id": chat_id}
+        value = {"$set": {"gif": encoded}}
+        chat = update_chat(db=db, query=query, value=value)
+        print(chat)
+
+        if os.path.exists(path="gif.mp4"):
+            os.remove(path="gif.mp4")
 
         reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added a GIF to identify your token group chat. Get ready for super-powered trending insights 🚀.</b>"
 
@@ -340,7 +346,7 @@ def main() -> None:
     identity__handler = CallbackQueryHandler(_identity, pattern="^(emoji|photo|gif)$")
     emoji_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji)
     photo_handler = MessageHandler(filters.PHOTO, set_photo)
-    gif_handler = MessageHandler(filters.VIDEO, set_gif)
+    gif_handler = MessageHandler(filters.ANIMATION, set_gif)
 
     app.add_handler(add_conv_handler)
     app.add_handler(settings_handler)
