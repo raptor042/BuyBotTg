@@ -184,7 +184,8 @@ async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         keyboard = [
-            [InlineKeyboardButton("Add a group Emoji/Photo/GIF", callback_data="identity")]
+            [InlineKeyboardButton("Add a group Emoji/Photo/GIF", callback_data="identity")],
+            [InlineKeyboardButton("Change token", callback_data="change")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         reply_msg = "<b>🔰 Add an emoji, photo or GIF to identify your token group chat.</b>"
@@ -327,6 +328,74 @@ async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await update.message.reply_html(text=reply_msg)
+
+async def change(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        keyboard = [
+            [InlineKeyboardButton("Binance Smart Chain", callback_data="bsc")],
+            [InlineKeyboardButton("Ethereum", callback_data="eth")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_msg = "<b>🔰 Please select the blockchain of choice.....</b>"
+
+        await query.message.reply_html(text=reply_msg, reply_markup=reply_markup)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
+
+async def _chain(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        context.user_data["chain"] = query.data
+
+        reply_msg = "<b>🔰 Enter the new token address ie: 0x2er35....</b>"
+        await query.message.reply_html(text=reply_msg)
+
+        return START
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
+
+        return ConversationHandler.END
+
+async def change_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.message.from_user
+    logger.info("User %s sent a token address.", user.username)
+
+    try:
+        is_valid = validateAddress(update.message.text)
+        print(is_valid)
+
+        if is_valid:
+            chat_id = update.message.chat_id
+            chain = context.user_data["chain"]
+            query = {"chat_id": chat_id}
+
+            value = {"$set": {"token": update.message.text, "chain": chain}}
+            chat = update_chat(db=db, query=query, value=value)
+            print(chat)
+
+            reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully changed the token for the group chat. Get ready for super-powered trending insights 🚀.</b>"
+
+            await update.message.reply_html(text=reply_msg)
+        else:
+            reply_msg = "<b>🚨 Token Address is not valid.</b>"
+            await update.message.reply_html(text=reply_msg)
+
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
     
 def main() -> None:
     global db
@@ -354,6 +423,9 @@ def main() -> None:
     emoji_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji)
     photo_handler = MessageHandler(filters.PHOTO, set_photo)
     gif_handler = MessageHandler(filters.ANIMATION, set_gif)
+    change_handler = CallbackQueryHandler(change, pattern="^change$")
+    chain_handler = CallbackQueryHandler(_chain, pattern="^(bsc|eth)$")
+    change_token_handler = MessageHandler(filters.Regex("^0x"), change_token)
 
     app.add_handler(add_conv_handler)
     app.add_handler(settings_handler)
@@ -362,6 +434,9 @@ def main() -> None:
     app.add_handler(emoji_handler)
     app.add_handler(photo_handler)
     app.add_handler(gif_handler)
+    app.add_handler(change_handler)
+    app.add_handler(chain_handler)
+    app.add_handler(change_token_handler)
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
