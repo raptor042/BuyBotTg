@@ -265,19 +265,12 @@ async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.message.chat_id
 
         file = await update.message.effective_attachment[-1].get_file()
-        await file.download_to_drive("photo.jpg")
         print(file)
 
-        with open("photo.jpg", "rb") as f:
-            encoded = base64.b64encode(f.read())
-
         query = {"chat_id": chat_id}
-        value = {"$set": {"photo": encoded}}
+        value = {"$set": {"photo": file["file_id"]}}
         chat = update_chat(db=db, query=query, value=value)
         print(chat)
-
-        if os.path.exists(path="photo.jpg"):
-            os.remove(path="photo.jpg")
 
         reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added a photo to identify your token group chat. Get ready for super-powered trending insights 🚀.</b>"
 
@@ -297,19 +290,12 @@ async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.message.chat_id
 
         file = await update.message.effective_attachment.get_file()
-        await file.download_to_drive("gif.mp4")
         print(file)
 
-        with open("gif.mp4", "rb") as f:
-            encoded = base64.b64encode(f.read())
-
         query = {"chat_id": chat_id}
-        value = {"$set": {"gif": encoded}}
+        value = {"$set": {"gif": file["file_id"]}}
         chat = update_chat(db=db, query=query, value=value)
         print(chat)
-
-        if os.path.exists(path="gif.mp4"):
-            os.remove(path="gif.mp4")
 
         reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added a GIF to identify your token group chat. Get ready for super-powered trending insights 🚀.</b>"
 
