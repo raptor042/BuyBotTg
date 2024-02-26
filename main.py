@@ -247,17 +247,13 @@ async def set_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat = get_chat(db=db, query=query)
         print(chat)
 
-        if "photo" in chat or "gif" in chat:
-            reply_msg = "<b>🚨 This token group chat already has an identity.</b>"
-            await update.message.reply_html(text=reply_msg)
-        else:
-            value = {"$set": {"emoji": update.message.text}}
-            chat = update_chat(db=db, query=query, value=value)
-            print(chat)
+        value = {"$set": {"emoji": update.message.text}}
+        chat = update_chat(db=db, query=query, value=value)
+        print(chat)
 
-            reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added an emoji to identify your token group chat. Get ready for super-powered trending insights 🚀.</b>"
+        reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully added an emoji to identify your token group chat. Get ready for super-powered trending insights 🚀.</b>"
 
-            await update.message.reply_html(text=reply_msg)
+        await update.message.reply_html(text=reply_msg)
 
     except Exception as e:
         logging.error(f"An error has occurred: {e}")
@@ -276,8 +272,8 @@ async def set_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat = get_chat(db=db, query=query)
         print(chat)
 
-        if "emoji" in chat or "gif" in chat:
-            reply_msg = "<b>🚨 This token group chat already has an identity.</b>"
+        if "gif" in chat:
+            reply_msg = "<b>🚨 This token group chat already has an GIF.</b>"
             await update.message.reply_html(text=reply_msg)
         else:
             file = await update.message.effective_attachment[-1].get_file()
@@ -308,8 +304,8 @@ async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat = get_chat(db=db, query=query)
         print(chat)
 
-        if "photo" in chat or "emoji" in chat:
-            reply_msg = "<b>🚨 This token group chat already has an identity.</b>"
+        if "photo" in chat:
+            reply_msg = "<b>🚨 This token group chat already has an photo.</b>"
             await update.message.reply_html(text=reply_msg)
         else:
             file = await update.message.effective_attachment.get_file()
