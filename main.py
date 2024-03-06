@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import time
 
 from web3 import Web3
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -12,9 +13,8 @@ from telegram.ext import (
     ConversationHandler,
     filters
 )
-import base64
 
-from __db__.db import connect_db, get_chat, set_chat, update_chat
+from __db__.db import connect_db, get_chat, set_chat, update_chat, set_comp
 from __web3__.web3 import validateAddress
 from __api__.api import getTokenVolume
 
@@ -184,8 +184,11 @@ async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         keyboard = [
-            [InlineKeyboardButton("Add a group Emoji/Photo/GIF", callback_data="identity")],
-            [InlineKeyboardButton("Change token", callback_data="change")]
+            [InlineKeyboardButton("🎭 Add a group Emoji/Photo/GIF", callback_data="identity")],
+            [InlineKeyboardButton("🏆 Start a Biggest Buy Comp", callback_data="buy_comp")],
+            [InlineKeyboardButton("🏅 Start a Last Buy Comp", callback_data="last_comp")],
+            [InlineKeyboardButton("⏬ Set Min Buy", callback_data="min_buy")],
+            [InlineKeyboardButton("⏩ Set Buy Step", callback_data="buy_step")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         reply_msg = "<b>🔰 Add an emoji, photo or GIF to identify your token group chat.</b>"
@@ -325,18 +328,22 @@ async def set_gif(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await update.message.reply_html(text=reply_msg)
 
-async def change(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def buy_comp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     try:
         keyboard = [
-            [InlineKeyboardButton("Binance Smart Chain", callback_data="bsc")],
-            [InlineKeyboardButton("Ethereum", callback_data="eth")]
+            [InlineKeyboardButton("⏳ Comp duration (24 hours)", callback_data="comp_duartion")],
+            [InlineKeyboardButton("🥇 1st Prize (1 BNB)", callback_data="1st_prize")],
+            [InlineKeyboardButton("🥈 2nd Prize (Not Set)", callback_data="2nd_prize")],
+            [InlineKeyboardButton("🥉 3rd Prize (Not Set)", callback_data="3rd_prize")],
+            [InlineKeyboardButton("💼 Must Hold (Not Set)", callback_data="must_hold")],
+            [InlineKeyboardButton("💰 Minimum Buy", callback_data="min_buy")],
+            [InlineKeyboardButton("🏆 Start Biggest Buy Comp", callback_data="start_biggest_buy_comp")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        reply_msg = "<b>🔰 Please select the blockchain of choice.....</b>"
-
+        reply_msg = "<b>🔰 Set up your Biggest Buy Competiton.</b>"
         await query.message.reply_html(text=reply_msg, reply_markup=reply_markup)
     except Exception as e:
         logging.error(f"An error has occurred: {e}")
@@ -344,54 +351,225 @@ async def change(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await query.message.reply_html(text=reply_msg)
 
-async def _chain(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def last_comp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     try:
-        context.user_data["chain"] = query.data
-
-        reply_msg = "<b>🔰 Enter the new token address ie: 0x2er35....</b>"
-        await query.message.reply_html(text=reply_msg)
-
-        return START
+        keyboard = [
+            [InlineKeyboardButton("⏳ Countdown (5 minutes)", callback_data="comp_duartion")],
+            [InlineKeyboardButton("🥇 1st Prize (1 BNB)", callback_data="1st_prize")],
+            [InlineKeyboardButton("💼 Must Hold (Not Set)", callback_data="must_hold")],
+            [InlineKeyboardButton("💰 Minimum Buy", callback_data="min_buy")],
+            [InlineKeyboardButton("🏆 Start Biggest Buy Comp", callback_data="start_last_buy_comp")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_msg = "<b>🔰 Set up your Last Buy Competiton.</b>"
+        await query.message.reply_html(text=reply_msg, reply_markup=reply_markup)
     except Exception as e:
         logging.error(f"An error has occurred: {e}")
 
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await query.message.reply_html(text=reply_msg)
 
-        return ConversationHandler.END
-
-async def change_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.message.from_user
-    logger.info("User %s sent a token address.", user.username)
+async def comp_duration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
 
     try:
-        is_valid = validateAddress(update.message.text)
-        print(is_valid)
+        reply_msg = "<b>🔰 Enter your competiton's duration in hours ie: duration: 24</b>"
+        await query.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
 
-        if is_valid:
-            chat_id = update.message.chat_id
-            chain = context.user_data["chain"]
-            query = {"chat_id": chat_id}
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
 
-            value = {"$set": {"token": update.message.text, "chain": chain}}
-            chat = update_chat(db=db, query=query, value=value)
-            print(chat)
+async def comp__duration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s set a comp duration.", user.username)
 
-            reply_msg = f"<b>Congratulations {user.username} 🎉, You have successfully changed the token for the group chat. Get ready for super-powered trending insights 🚀.</b>"
+    try:
+        context.user_data["comp_duration"] = update.message.text.split(" ", 1)[0]
+        print(update.message.text, context.user_data["comp_duration"])
 
-            await update.message.reply_html(text=reply_msg)
-        else:
-            reply_msg = "<b>🚨 Token Address is not valid.</b>"
-            await update.message.reply_html(text=reply_msg)
-
+        reply_msg = f"<b>🔰 You have successfully set your competiton's duration to <i>${update.message.text}</i>.</b>"
+        await update.message.reply_html(text=reply_msg)
     except Exception as e:
         logging.error(f"An error has occurred: {e}")
 
         reply_msg = "<b>🚨 An error occured while using the bot.</b>"
         await update.message.reply_html(text=reply_msg)
+
+async def first_prize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        reply_msg = "<b>🔰 Enter your competiton's first prize in BNB ie: 1st: 0.05</b>"
+        await query.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
+
+async def first__prize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s set a 1st prize for comp.", user.username)
+
+    try:
+        context.user_data["first_prize"] = update.message.text.split(" ", 1)[0]
+        print(update.message.text, context.user_data["first_prize"])
+
+        reply_msg = f"<b>🔰 You have successfully set the first prize for your competiton to be <i>${update.message.text}</i>.</b>"
+        await update.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+
+async def second_prize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        reply_msg = "<b>🔰 Enter your competiton's second prize in BNB ie: 2nd: 0.05</b>"
+        await query.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
+
+async def second__prize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s set a 2nd prize for comp.", user.username)
+
+    try:
+        context.user_data["second_prize"] = update.message.text.split(" ", 1)[0]
+        print(update.message.text, context.user_data["second_prize"])
+
+        reply_msg = f"<b>🔰 You have successfully set the second prize for your competiton to be <i>${update.message.text}</i>.</b>"
+        await update.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+
+async def third_prize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        reply_msg = "<b>🔰 Enter your competiton's third prize in BNB ie: 3rd: 0.05</b>"
+        await query.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
+
+async def third__prize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s set a 3rd prize for comp.", user.username)
+
+    try:
+        context.user_data["third_prize"] = update.message.text.split(" ", 1)[0]
+        print(update.message.text, context.user_data["third_prize"])
+
+        reply_msg = f"<b>🔰 You have successfully set the third prize for your competiton to be <i>${update.message.text}</i>.</b>"
+        await update.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+
+async def must_hold(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        reply_msg = "<b>🔰 Enter your competiton's must hold in hours ie: hodl: 4</b>"
+        await query.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
+
+async def must__hold(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s set a 3rd hold for comp.", user.username)
+
+    try:
+        context.user_data["must_hold"] = update.message.text.split(" ", 1)[0]
+        print(update.message.text, context.user_data["must_hold"])
+
+        reply_msg = f"<b>🔰 You have successfully set the must hold for your competiton to be <i>${update.message.text}</i>.</b>"
+        await update.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+
+async def min_buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        reply_msg = "<b>🔰 Enter your competiton's min buy in BNB ie: min: 0.05</b>"
+        await query.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
+
+async def min__buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.message.from_user
+    logger.info("User %s set a 3rd buy for comp.", user.username)
+
+    try:
+        context.user_data["min_buy"] = update.message.text.split(" ", 1)[0]
+        print(update.message.text, context.user_data["min_buy"])
+
+        reply_msg = f"<b>🔰 You have successfully set the min buy for your competiton to be <i>${update.message.text}</i>.</b>"
+        await update.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await update.message.reply_html(text=reply_msg)
+
+async def start_biggest_buy_comp(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        chat_id = update.message.chat_id
+        comp_duration = context.user_data["comp_duration"]
+        first_prize = context.user_data["first_prize"]
+        second_prize = context.user_data["second_prize"]
+        third_prize = context.user_data["third_prize"]
+        must_hold = context.user_data["must_hold"]
+        min_buy = context.user_data["min_buy"]
+
+        value = {"chat_id": chat_id, "duration": comp_duration, "first_prize": first_prize, "second_prize": second_prize, "third_prize": third_prize, "must_hold": must_hold, "min_buy": min_buy, "type": "BBC", "timestamp": int(time.time())}
+        chat = set_chat(db=db, value=value)
+        print(chat)
+
+        reply_msg = f"<b>Congratulations 🎉, You have successfully set up a biggest buy competition.</b>"
+        await query.message.reply_html(text=reply_msg)
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
+
+        reply_msg = "<b>🚨 An error occured while using the bot.</b>"
+        await query.message.reply_html(text=reply_msg)
     
 def main() -> None:
     global db
@@ -419,9 +597,20 @@ def main() -> None:
     emoji_handler = MessageHandler(filters.Regex("[^a-zA-Z0-9]"), set_emoji)
     photo_handler = MessageHandler(filters.PHOTO, set_photo)
     gif_handler = MessageHandler(filters.ANIMATION, set_gif)
-    change_handler = CallbackQueryHandler(change, pattern="^change$")
-    chain_handler = CallbackQueryHandler(_chain, pattern="^(bsc|eth)$")
-    change_token_handler = MessageHandler(filters.Regex("^0x"), change_token)
+    buy_comp_callback_handler = CallbackQueryHandler(buy_comp, pattern="^buy_comp$")
+    last_comp_callback_handler = CallbackQueryHandler(last_comp, pattern="^last_comp$")
+    comp_duration_callback_handler = CallbackQueryHandler(comp_duration, pattern="^comp_duration$")
+    comp_duration_handler = MessageHandler(filters.Regex("^duration"), comp__duration)
+    first_prize_callback_handler = CallbackQueryHandler(first_prize, pattern="^first_prize$")
+    first_prize_handler = MessageHandler(filters.Regex("^1st"), first__prize)
+    second_prize_callback_handler = CallbackQueryHandler(second_prize, pattern="^second_prize$")
+    second_prize_handler = MessageHandler(filters.Regex("^2nd"), second__prize)
+    third_prize_callback_handler = CallbackQueryHandler(third_prize, pattern="^third_prize$")
+    third_prize_handler = MessageHandler(filters.Regex("^3rd"), third__prize)
+    must_hold_callback_handler = CallbackQueryHandler(must_hold, pattern="^must_hold$")
+    must_hold_handler = MessageHandler(filters.Regex("^hodl"), must__hold)
+    min_buy_callback_handler = CallbackQueryHandler(min_buy, pattern="^min_buy$")
+    min_buy_handler = MessageHandler(filters.Regex("^min"), min__buy)
 
     app.add_handler(add_conv_handler)
     app.add_handler(settings_handler)
@@ -430,9 +619,20 @@ def main() -> None:
     app.add_handler(emoji_handler)
     app.add_handler(photo_handler)
     app.add_handler(gif_handler)
-    app.add_handler(change_handler)
-    app.add_handler(chain_handler)
-    app.add_handler(change_token_handler)
+    app.add_handler(buy_comp_callback_handler)
+    app.add_handler(last_comp_callback_handler)
+    app.add_handler(comp_duration_callback_handler)
+    app.add_handler(comp_duration_handler)
+    app.add_handler(first_prize_callback_handler)
+    app.add_handler(first_prize_handler)
+    app.add_handler(second_prize_callback_handler)
+    app.add_handler(second_prize_handler)
+    app.add_handler(third_prize_callback_handler)
+    app.add_handler(third_prize_handler)
+    app.add_handler(must_hold_callback_handler)
+    app.add_handler(must_hold_handler)
+    app.add_handler(min_buy_callback_handler)
+    app.add_handler(min_buy_handler)
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
